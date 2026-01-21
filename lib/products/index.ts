@@ -1,3 +1,5 @@
-export * from "./products.api";
 export * from "./products.types";
-export * from "./attributes";
+export * from "./categoryAttributes.api";
+export * from "./product.form.ui";
+export * from "./api";
+// export * from "./products.service";

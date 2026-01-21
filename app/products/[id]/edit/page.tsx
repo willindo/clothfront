@@ -1,5 +1,5 @@
 import { getProductById } from "@/lib/api/productsa";
-import ProductForm from "../../new/ProductForm";
+import ProductForm from "../../new/ProductForm11";
 
 export default async function EditProductPage({
   params,

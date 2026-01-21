@@ -35,16 +35,16 @@ export const zProductFormSchema = z
     title: z.string().min(1, "Title is required"),
     categories: z.string().array().min(1, "Select at least one category"),
 
-    defaultCurrency: z.string().default("USD"),
+    defaultCurrency: z.string(),
 
-    slug: z.string().nullable().default(null),
-    description: z.string().nullable().default(null),
-    brand: z.string().nullable().default(null),
+    slug: z.string().nullable(),
+    description: z.string().nullable(),
+    brand: z.string().nullable(),
 
     type: zProductCreateSchema.shape.type,
     gender: zProductCreateSchema.shape.gender,
     ageGroup: zProductCreateSchema.shape.ageGroup,
-    defaultPrice: z.number().nullable().default(null),
+    defaultPrice: z.number().nullable(),
 
     media: z.array(zFormMedia).default([]),
     attributes: z.array(zFormAttribute).default([]),

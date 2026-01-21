@@ -173,3 +173,80 @@ app/admin/order/page   app/admin/analytics/page   app/dashboard/page .
  "ensure:zod": "if [ ! -d src/generated/zod ]; then echo '❌ Zod schemas missing! Copy them from backend or run sync-types locally.'; fi",
     "fetch:zod": "echo '❌ (optional) Implement fetch from backend repo or run prisma:generate in monorepo'"
     ================
+
+    Create Product Form
+│
+├── Category Selector
+│
+├── Basic Product Info (dynamic by category)
+│
+├── Variant Attribute Selector
+│     ├── Color ✔
+│     └── Size ✔
+│
+├── Variant Value Selector
+│     ├── Color → Red, Blue, Black
+│     └── Size → S, M, L
+│
+├── Generated Variants Table
+│     ├── SKU
+│     ├── Price
+│     ├── Stock
+│     └── Images
+│
+└── Submit Product
+
+
+| Layer    | Responsibility                         |
+| -------- | -------------------------------------- |
+| DB       | Store categories, attributes, variants |
+| NestJS   | Enforce rules, validate payload        |
+| Frontend | Construct payload                      |
+| RHF      | Control state + validation             |
+
+1️⃣ Build Variant Attribute Selector UI (checkbox driven by API)
+2️⃣ Build Variant Value Selector UI
+3️⃣ Build Variant Cartesian generator
+4️⃣ Build Variants table + RHF integration
+5️⃣ Wire submit → backend <== are these full dessect of create product UI based on nestjs endpoint ?
+
+Category
+ ├── productAttributes (brand, material, fit)
+ ├── variantDimensions (size[], color[])
+ └── variants[] (cartesian output)
+// Architectural Direction (Recommended)
+Category
+ ├── productAttributes (CATEGORY_RULES)
+ ├── variantAttributes (user-selected)
+ ├── variantDimensions (value sets)
+ ├── generatedVariants (cartesian)
+
+===========
+CATEGORY (rules)
+ ├─ productAttributes (allowed keys)
+ ├─ variantAttributes (dimension names)
+ └─ variantKind (shape)
+
+USER (UI)
+ ├─ selects variantAttributes (subset)
+ ├─ enters variantDimensions (value sets)
+ └─ system generates variants (cartesian)
+
+FORM STATE (ProductFormUI)
+ ├─ productAttributes (key → value)
+ ├─ variantDimensions (key → string[])
+ └─ variants (expanded rows)
+
+ADAPTER
+ ├─ normalize attributes
+ ├─ flatten variants
+ └─ prepare API payload
+
+API
+//\\
+Category
+  → Variant Attributes (slugs)
+    → Variant Dimensions (values)
+      → Cartesian Generator
+        → Variant Table
+          → API Adapter

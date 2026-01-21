@@ -3,23 +3,22 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, FormProvider } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-
-import { zProductFormSchema, ProductFormValues } from "./product.form.zod";
-import { getProductDefaultValues } from "./product.form.utils";
-import { formToApi } from "./product.form.transform";
 
 import ProductBasicFields from "./ProductBasicFields";
 import ProductAttributesFields from "./ProductsAttributesFields";
 import ProductVariantBuilder from "./ProductVariantBuilder";
-import ProductMediaUploader from "./ProductMediaUploader";
+// import ProductMediaUploader from "./ProductMediaUploader";
+import ProductSubmitBar from "./ProductSubmitBar";
+import {
+  PRODUCT_FORM_DEFAULTS,
+  ProductFormUI,
+} from "@/lib/products/product.form.ui";
 
-import { createProduct, updateProduct } from "@/lib/products";
-import ProductSubmitBar from "@/components/products/ProductSubmitBar";
+import { createProduct, updateProduct } from "@/lib/products/products.service";
 
 interface ProductFormProps {
   mode?: "create" | "edit";
-  product?: any;
+  product?: Partial<ProductFormUI> & { id?: string };
 }
 
 export default function ProductForm({
@@ -28,48 +27,51 @@ export default function ProductForm({
 }: ProductFormProps) {
   const router = useRouter();
 
-  const defaultValues = getProductDefaultValues(product);
-
-  const form = useForm<ProductFormValues>({
-    resolver: zodResolver(zProductFormSchema as any),
-    defaultValues,
+  const form = useForm<ProductFormUI>({
+    defaultValues: PRODUCT_FORM_DEFAULTS,
     mode: "onChange",
   });
 
-  // Category watcher — keep as-is
+  /* -------------------------------
+     Category watcher (safe)
+  -------------------------------- */
   useEffect(() => {
     const subscription = form.watch((values) => {
-      if (values.categories && values.categories.length > 0) {
-        // placeholder for loading category-specific attribute sets
-      }
+      // if (values.categories?.length) {
+      // load category-based attributes later
+      // }
     });
 
     return () => subscription.unsubscribe();
   }, [form]);
 
-  // Edit mode reset
+  /* -------------------------------
+     Edit mode reset (RHF-native)
+  -------------------------------- */
   useEffect(() => {
     if (mode === "edit" && product) {
-      form.reset(defaultValues);
+      form.reset({
+        ...PRODUCT_FORM_DEFAULTS,
+        ...product,
+      });
     }
-  }, [product]);
+  }, [mode, product, form]);
 
-  const onSubmit = async (values: ProductFormValues) => {
+  /* -------------------------------
+     Submit (RHF-only for now)
+  -------------------------------- */
+  const onSubmit = async (values: ProductFormUI) => {
     try {
-      // transform form values -> API payload (validates against zProductCreateSchema)
-      const payload = formToApi(values);
-
-      if (mode === "edit" && product) {
-        await updateProduct(product.id, payload);
+      if (mode === "edit" && product?.id) {
+        await updateProduct(product.id, values);
       } else {
-        await createProduct(payload);
+        await createProduct(values);
       }
 
       router.push("/products");
       router.refresh();
     } catch (err) {
       console.error("PRODUCT SUBMIT FAILED:", err);
-      // optionally: form.setError(...) based on err
     }
   };
 
@@ -77,11 +79,8 @@ export default function ProductForm({
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10 pb-16">
         <ProductBasicFields />
-
         <ProductAttributesFields />
-
         <ProductVariantBuilder />
-
         {/* <ProductMediaUploader /> */}
 
         <ProductSubmitBar
@@ -92,3 +91,9 @@ export default function ProductForm({
     </FormProvider>
   );
 }
+// | Component               | Responsibility               |
+// | ----------------------- | ---------------------------- |
+// | ProductBasicFields      | title, description, category |
+// | ProductAttributesFields | brand, material, fit         |
+// | ProductVariantBuilder   | full variant engine          |
+// | ProductSubmitBar        | submit UX                    |

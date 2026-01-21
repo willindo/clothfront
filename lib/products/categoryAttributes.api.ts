@@ -4,11 +4,6 @@ const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
 });
 
-/**
- * Fetch attribute definitions for a given category.
- * Expected backend endpoint: GET /categories/:id/attributes
- * Fallback: GET /attributes?categoryId=...
- */
 export async function getCategories() {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories`);
   if (!res.ok) return [];
@@ -23,7 +18,11 @@ export async function getAttributesByCategory(categoryId: string) {
     const res = await api.get(`/categories/${categoryId}/attributes`);
     // assume res.data is array of attribute defs
     return res.data || [];
-  } catch (err) {
+  } catch (e: any) {
+    if (e?.response?.status === 404) {
+      // ✅ Category simply has no attributes
+      return [];
+    }
     // fallback to filter endpoint
     try {
       const res2 = await api.get(`/attributes`, { params: { categoryId } });

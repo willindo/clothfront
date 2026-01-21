@@ -2,20 +2,28 @@
 
 import React, { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { getAttributesByCategory } from "@/lib/products/attributes";
+import { getAttributesByCategory } from "@/lib/products/categoryAttributes.api";
 import AttributeRenderer from "./AttributeRenderer";
+import { CATEGORY_RULES } from "@/lib/products/category.rules";
+
+interface VariantAttributeRendererProps {
+  index: number;
+  categoryId?: string | null;
+}
 
 export default function VariantAttributeRenderer({
   index,
   categoryId,
-}: {
-  index: number;
-  categoryId?: string | null;
-}) {
+}: VariantAttributeRendererProps) {
   const { getValues, setValue } = useFormContext();
+
   const [defs, setDefs] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
 
+  /* -------------------------------------------
+     Load attribute definitions (TEMP: all attrs)
+     STEP 2 will restrict to variantAttributes
+  -------------------------------------------- */
   useEffect(() => {
     if (!categoryId) {
       setDefs(null);
@@ -28,29 +36,21 @@ export default function VariantAttributeRenderer({
     getAttributesByCategory(categoryId)
       .then((res) => {
         if (!mounted) return;
-        setDefs(res || []);
 
-        // Initialize variants[index].attributes to array of { attributeId, value }
-        const variants = getValues("variants") || [];
-        const variant = variants[index] || { attributes: [] };
-        const nextAttrs = Array.isArray(variant.attributes)
-          ? [...variant.attributes]
-          : [];
+        const rule = CATEGORY_RULES[categoryId].variantAttributes;
 
-        (res || []).forEach((def: any) => {
-          const exists = nextAttrs.find((a: any) => a.attributeId === def.id);
-          if (!exists)
-            nextAttrs.push({ attributeId: def.id, value: def.default ?? null });
-        });
+        const allowed = rule ?? [];
 
-        const nextVariants = [...variants];
-        nextVariants[index] = {
-          ...(nextVariants[index] || {}),
-          attributes: nextAttrs,
-        };
-        setValue("variants", nextVariants);
+        const definitions = (res || []).filter((d: any) =>
+          allowed.includes(d.slug),
+        );
+
+        setDefs(definitions);
       })
-      .catch((err) => console.error("failed to load variant attrs", err))
+
+      .catch((err) => {
+        console.error("failed to load variant attrs", err);
+      })
       .finally(() => {
         if (mounted) setLoading(false);
       });
@@ -58,27 +58,43 @@ export default function VariantAttributeRenderer({
     return () => {
       mounted = false;
     };
-  }, [categoryId, index]);
+  }, [categoryId]);
 
-  if (!categoryId)
+  /* -------------------------------------------
+     Guards
+  -------------------------------------------- */
+  if (!categoryId) {
     return (
       <div className="text-sm text-gray-500">
         Select category to load variant attributes.
       </div>
     );
-  if (loading || !defs)
+  }
+
+  if (loading || !defs) {
     return (
       <div className="text-sm text-gray-500">Loading variant attributes…</div>
     );
+  }
 
-  const variant = (getValues("variants") || [])[index] || { attributes: [] };
-  const attrs = Array.isArray(variant.attributes) ? variant.attributes : [];
+  /* -------------------------------------------
+     Read current variant state
+  -------------------------------------------- */
+  const variants = getValues("variants") || [];
+  const variant = variants[index] || {};
+  const attributes: Record<string, any> =
+    typeof variant.attributes === "object" && variant.attributes !== null
+      ? variant.attributes
+      : {};
 
+  /* -------------------------------------------
+     Render
+  -------------------------------------------- */
   return (
     <div className="space-y-3">
       {defs.map((def) => {
-        const cur = attrs.find((a: any) => a.attributeId === def.id);
-        const value = cur ? cur.value : (def.default ?? null);
+        const slug = def.slug;
+        const value = attributes[slug] ?? def.default ?? "";
 
         return (
           <div key={def.id} className="p-2 border rounded-md">
@@ -86,28 +102,19 @@ export default function VariantAttributeRenderer({
               attribute={def}
               value={value}
               onChange={(nextValue: any) => {
-                const variants = getValues("variants") || [];
-                const nextVariants = Array.isArray(variants)
-                  ? [...variants]
-                  : [];
-                const variantObj = nextVariants[index] || { attributes: [] };
-                const nextAttrs = Array.isArray(variantObj.attributes)
-                  ? [...variantObj.attributes]
-                  : [];
-
-                const idx = nextAttrs.findIndex(
-                  (a: any) => a.attributeId === def.id
-                );
-                const payload = { attributeId: def.id, value: nextValue };
-
-                if (idx === -1) nextAttrs.push(payload);
-                else nextAttrs[idx] = { ...nextAttrs[idx], value: nextValue };
+                const nextVariants = [...variants];
 
                 nextVariants[index] = {
-                  ...(nextVariants[index] || {}),
-                  attributes: nextAttrs,
+                  ...variant,
+                  attributes: {
+                    ...attributes,
+                    [slug]: nextValue,
+                  },
                 };
-                setValue("variants", nextVariants);
+
+                setValue(`variants.${index}.attributes.${slug}`, nextValue, {
+                  shouldDirty: true,
+                });
               }}
             />
           </div>

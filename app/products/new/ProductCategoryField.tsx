@@ -32,7 +32,11 @@ export default function ProductCategoryField() {
 
       <Select
         value={categoryId}
-        onValueChange={(v) => setValue("categoryId", v)}
+        onValueChange={(v) => {
+          setValue("categoryId", v, { shouldDirty: true });
+          setValue("productAttributes", {});
+          setValue("variants", []); // reset variants
+        }}
       >
         <SelectTrigger>
           <SelectValue placeholder="Select category…" />

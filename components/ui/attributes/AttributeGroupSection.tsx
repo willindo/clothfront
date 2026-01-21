@@ -2,14 +2,18 @@
 
 import React, { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { getAttributesByCategory } from "@/lib/products/attributes";
+import { getAttributesByCategory } from "@/lib/products/categoryAttributes.api";
 import AttributeRenderer from "./AttributeRenderer";
 
-export default function AttributeGroupSection({
-  categoryId,
-}: {
+interface Props {
   categoryId: string | null;
-}) {
+  allowedSlugs?: string[];
+}
+
+const AttributeGroupSection: React.FC<Props> = ({
+  categoryId,
+  allowedSlugs,
+}) => {
   const { setValue, getValues } = useFormContext();
   const [defs, setDefs] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,32 +30,36 @@ export default function AttributeGroupSection({
     getAttributesByCategory(categoryId)
       .then((res) => {
         if (!mounted) return;
-        const arr = res || [];
-        setDefs(arr);
 
-        // Initialize form attributes as array of { attributeId, value }
-        const current = getValues("attributes") || [];
-        const next = Array.isArray(current) ? [...current] : [];
+        let definitions = res || [];
 
-        arr.forEach((attrDef: any) => {
-          const exists = next.find((a: any) => a.attributeId === attrDef.id);
-          if (!exists) {
-            next.push({
-              attributeId: attrDef.id,
-              value: attrDef.default ?? null,
-            });
+        // enforce category rules
+        if (Array.isArray(allowedSlugs)) {
+          definitions = definitions.filter((d: any) =>
+            allowedSlugs.includes(d.slug),
+          );
+        }
+
+        setDefs(definitions);
+
+        // ensure defaults exist in map
+        const current = getValues("productAttributes") || {};
+        const next = { ...current };
+
+        definitions.forEach((def: any) => {
+          if (next[def.slug] === undefined) {
+            next[def.slug] = def.default ?? "";
           }
         });
 
-        // Also remove any attribute entries that no longer exist in defs
-        const filtered = next.filter((a: any) =>
-          arr.find((d: any) => d.id === a.attributeId)
-        );
+        // remove attributes no longer allowed
+        Object.keys(next).forEach((slug) => {
+          if (!definitions.find((d: any) => d.slug === slug)) {
+            delete next[slug];
+          }
+        });
 
-        setValue("attributes", filtered);
-      })
-      .catch((err) => {
-        console.error("failed to load attributes", err);
+        setValue("productAttributes", next, { shouldDirty: true });
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -60,7 +68,7 @@ export default function AttributeGroupSection({
     return () => {
       mounted = false;
     };
-  }, [categoryId]);
+  }, [categoryId, allowedSlugs, getValues, setValue]);
 
   if (!categoryId) {
     return (
@@ -77,28 +85,25 @@ export default function AttributeGroupSection({
   return (
     <div className="space-y-4">
       {defs.map((def) => {
-        const current = (getValues("attributes") || []).find(
-          (v: any) => v.attributeId === def.id
-        );
-        const value = current ? current.value : (def.default ?? null);
+        const current = getValues("productAttributes") || {};
+        const value = current[def.slug] ?? def.default ?? "";
 
         return (
-          <div key={def.id} className="p-3 border rounded-md">
+          <div key={def.slug} className="p-3 border rounded-md">
             <AttributeRenderer
               attribute={def}
               value={value}
               onChange={(nextValue: any) => {
-                const currentArr = getValues("attributes") || [];
-                const next = Array.isArray(currentArr) ? [...currentArr] : [];
-                const idx = next.findIndex(
-                  (a: any) => a.attributeId === def.id
+                const currentMap = getValues("productAttributes") || {};
+
+                setValue(
+                  "productAttributes",
+                  {
+                    ...currentMap,
+                    [def.slug]: nextValue,
+                  },
+                  { shouldDirty: true },
                 );
-                const payload = { attributeId: def.id, value: nextValue };
-
-                if (idx === -1) next.push(payload);
-                else next[idx] = { ...next[idx], value: nextValue };
-
-                setValue("attributes", next);
               }}
             />
           </div>
@@ -106,4 +111,6 @@ export default function AttributeGroupSection({
       })}
     </div>
   );
-}
+};
+
+export default AttributeGroupSection;

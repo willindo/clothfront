@@ -1,3 +1,5 @@
+"use client";
+import ProductBasicFields from "./ProductBasicFields";
 import ProductForm from "./ProductForm";
 
 export default function NewProductPage() {

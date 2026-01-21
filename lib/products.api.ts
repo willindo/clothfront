@@ -8,7 +8,7 @@ import {
   zSearchProductsSchema,
 } from "@cloth/shared-types";
 
-import { parse } from "../zod";
+import { parse } from "./zod";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 

@@ -1,8 +1,9 @@
 "use client";
 
 import { useFieldArray, useFormContext } from "react-hook-form";
-import VariantAttributeRenderer from "@/components/ui/attributes/VariantAttributeRenderer";
 import { Button } from "@/components/ui/button";
+import { getDefaultVariant } from "@/lib/products/category.defaults";
+import VariantAttributeRenderer from "@/components/ui/attributes/VariantAttributeRenderer";
 
 export default function ProductVariantBuilder() {
   const { control, watch } = useFormContext();
@@ -21,6 +22,11 @@ export default function ProductVariantBuilder() {
           Select a category to define variants.
         </p>
       )}
+      {categoryId && (
+        <Button onClick={() => append(getDefaultVariant(categoryId))}>
+          Add Variant
+        </Button>
+      )}
 
       {fields.map((field, index) => (
         <div key={field.id} className="p-4 rounded-lg border space-y-4">
@@ -38,14 +44,6 @@ export default function ProductVariantBuilder() {
           <VariantAttributeRenderer index={index} categoryId={categoryId} />
         </div>
       ))}
-
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={() => append({ attributes: [], stock: 0, priceAdjustment: 0 })}
-      >
-        Add Variant
-      </Button>
     </div>
   );
 }
